@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>饭本 · 今日吃什么</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#fff9f0;--bg2:#fff4e6;--surface:#fffdf8;
+  --warm:#fde8c8;--warm2:#fbd9a8;
+  --text:#5c3d1e;--text2:#8b5e35;--text3:#b8895a;--text4:#d4aa80;
+  --tomato:#e84c2b;--tomato2:#f26740;
+  --honey:#f0a500;--honey2:#fac536;
+  --border:#f0d9b8;--border2:#e8c898;
+  --shadow:rgba(140,70,20,0.10);--shadow2:rgba(140,70,20,0.18);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'Noto Serif SC',serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
+
+/* LOGIN */
+.login-screen{position:fixed;inset:0;background:linear-gradient(160deg,#f97c3a,#e85020,#d63a10);display:flex;align-items:center;justify-content:center;z-index:8000;padding:24px}
+.login-box{background:var(--surface);border-radius:24px;padding:36px 28px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(180,60,0,0.3);text-align:center}
+.login-logo{font-family:'Playfair Display',serif;font-size:42px;font-weight:900;color:var(--text);margin-bottom:4px}
+.login-logo em{color:var(--tomato);font-style:italic}
+.login-sub{font-size:13px;color:var(--text3);margin-bottom:28px}
+.login-label{display:block;font-size:11px;font-family:'DM Mono',monospace;letter-spacing:0.14em;color:var(--text3);text-transform:uppercase;margin-bottom:8px;text-align:left}
+.login-input{width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;font-size:16px;font-family:'Noto Serif SC',serif;color:var(--text);outline:none;text-align:center;margin-bottom:16px;transition:border-color 0.2s}
+.login-input:focus{border-color:var(--tomato)}
+.login-btn{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#f97c3a,#e84c2b);color:white;font-size:15px;font-family:'Noto Serif SC',serif;font-weight:700;cursor:pointer;box-shadow:0 5px 18px rgba(232,76,43,0.35);transition:all 0.2s}
+.login-btn:hover{transform:translateY(-1px)}
+.login-hint{font-size:11px;color:var(--text4);margin-top:14px;line-height:1.7}
+
+/* SETUP */
+.setup-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:7000;padding:24px;overflow-y:auto}
+.setup-box{background:var(--surface);border-radius:20px;padding:28px;width:100%;max-width:440px;box-shadow:0 8px 32px var(--shadow2)}
+.setup-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text);margin-bottom:6px}
+.setup-sub{font-size:13px;color:var(--text3);margin-bottom:22px;line-height:1.7}
+.setup-field{margin-bottom:16px}
+.setup-label{display:block;font-size:11px;font-family:'DM Mono',monospace;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;margin-bottom:7px}
+.setup-input{width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;font-size:13px;font-family:'DM Mono',monospace;color:var(--text);outline:none;transition:border-color 0.2s}
+.setup-input:focus{border-color:var(--tomato)}
+.setup-btn{width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#f97c3a,#e84c2b);color:white;font-size:15px;font-family:'Noto Serif SC',serif;font-weight:700;cursor:pointer;box-shadow:0 5px 18px rgba(232,76,43,0.3);transition:all 0.2s;margin-top:4px}
+.setup-btn:hover{transform:translateY(-1px)}
+.setup-btn:disabled{opacity:0.6;cursor:not-allowed;transform:none}
+.setup-note{font-size:12px;color:var(--text3);line-height:1.8;margin-top:16px;background:var(--warm);border-radius:12px;padding:14px}
+.setup-note a{color:var(--tomato);font-weight:600}
+.setup-note code{background:var(--warm2);padding:1px 5px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px}
+.sql-block{background:#2d1a0e;color:#fde8c8;border-radius:10px;padding:12px;font-family:'DM Mono',monospace;font-size:11px;line-height:1.8;margin-top:10px;overflow-x:auto;white-space:pre}
+
+/* HEADER */
+.site-header{background:linear-gradient(160deg,#f97c3a 0%,#e85020 45%,#d63a10 100%);overflow:hidden;position:relative}
+.header-inner{padding:24px 20px 16px;position:relative;z-index:2}
+.steam-bg{position:absolute;top:0;left:0;right:0;bottom:0;z-index:1;overflow:hidden}
+.steam-line{position:absolute;bottom:-10px;border-radius:50%;background:rgba(255,255,255,0.07);animation:steamRise 5s ease-in-out infinite}
+@keyframes steamRise{0%{transform:translateY(0) scale(1);opacity:0.6}60%{transform:translateY(-70px) scale(1.4);opacity:0.2}100%{transform:translateY(-120px) scale(1.8);opacity:0}}
+.header-eyebrow{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.28em;color:rgba(255,248,230,0.75);text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.header-eyebrow::before{content:'';display:inline-block;width:18px;height:1px;background:rgba(255,248,230,0.5)}
+.header-logo{font-family:'Playfair Display',serif;font-size:40px;font-weight:900;line-height:1;color:#fff8e6}
+.header-logo em{font-style:italic;color:var(--honey2)}
+.header-sub{font-size:12px;color:rgba(255,248,220,0.65);margin-top:5px}
+.header-strip{background:rgba(0,0,0,0.12);backdrop-filter:blur(4px);padding:7px 20px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;border-top:1px solid rgba(255,255,255,0.1)}
+.date-text{font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,248,220,0.85);letter-spacing:0.1em}
+.user-chip{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);padding:3px 10px;border-radius:20px;cursor:pointer;transition:background 0.2s}
+.user-chip:hover{background:rgba(255,255,255,0.25)}
+.user-avatar{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;flex-shrink:0}
+.user-name{font-size:11px;color:rgba(255,248,220,0.9);font-family:'Noto Serif SC',serif;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--honey2);display:inline-block}
+.sync-dot.syncing{animation:blink 0.8s infinite}
+.sync-dot.error{background:#ff6b6b;animation:none}
+.sync-dot.ok{background:#6bcf7f;animation:none}
+
+/* TODAY */
+.today-hero{margin:16px 16px;border-radius:22px;overflow:hidden;box-shadow:0 6px 32px var(--shadow2)}
+.today-bg{background:linear-gradient(145deg,#fff0dc 0%,#ffe4bc 40%,#ffd9a0 70%,#fce8c4 100%);padding:22px;position:relative;min-height:185px;overflow:hidden}
+.today-bg::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(240,165,0,0.18) 0%,transparent 70%);pointer-events:none}
+.today-bg::after{content:'';position:absolute;bottom:-30px;left:-30px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(232,76,43,0.12) 0%,transparent 70%);pointer-events:none}
+.food-doodle{position:absolute;font-size:58px;opacity:0.12;user-select:none;animation:floatD 8s ease-in-out infinite;filter:saturate(0.6)}
+@keyframes floatD{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-9px) rotate(4deg)}}
+.today-tag{display:inline-flex;align-items:center;gap:6px;background:var(--tomato);color:white;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;padding:5px 12px;border-radius:20px;margin-bottom:14px;box-shadow:0 2px 10px rgba(232,76,43,0.35)}
+.today-tag::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--honey2);animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.today-name{font-family:'Playfair Display',serif;font-size:30px;font-weight:900;color:var(--text);line-height:1.15;margin-bottom:10px}
+.today-score-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.today-stars span{font-size:15px}
+.star-fill{color:var(--honey)}.star-empty{color:var(--warm2)}
+.score-n{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--tomato)}
+.score-d{font-size:13px;color:var(--text3)}
+.cat-badge{background:rgba(232,76,43,0.1);border:1px solid rgba(232,76,43,0.2);color:var(--tomato);font-size:11px;padding:2px 10px;border-radius:20px}
+.today-reason{background:rgba(255,255,255,0.6);border-left:3px solid var(--honey);padding:10px 14px;font-size:13px;color:var(--text2);line-height:1.75;border-radius:0 10px 10px 0;font-style:italic;backdrop-filter:blur(4px)}
+.today-added-by{font-size:11px;color:var(--text3);margin-top:8px;display:flex;align-items:center;gap:5px}
+.today-actions{background:var(--warm);padding:14px 20px;display:flex;gap:10px;border-top:1px solid var(--border2)}
+.btn-reroll{flex:1;padding:10px 16px;border-radius:10px;border:1.5px solid var(--border2);background:white;color:var(--text2);font-size:13px;font-family:'Noto Serif SC',serif;cursor:pointer;transition:all 0.2s;font-weight:600}
+.btn-reroll:hover{background:var(--text2);color:white}
+.btn-nav{flex:1;padding:10px 16px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--tomato2),var(--tomato));color:white;font-size:13px;font-family:'Noto Serif SC',serif;cursor:pointer;font-weight:600;box-shadow:0 3px 12px rgba(232,76,43,0.3)}
+
+/* TABS */
+.tab-bar{display:flex;padding:0 16px;background:var(--surface);border-bottom:2px solid var(--warm);margin-bottom:4px}
+.tab-item{flex:1;padding:12px 4px 10px;text-align:center;font-size:12px;font-weight:600;color:var(--text4);cursor:pointer;transition:all 0.2s;border-bottom:2px solid transparent;margin-bottom:-2px;user-select:none}
+.tab-item.active{color:var(--tomato);border-bottom-color:var(--tomato)}
+.panel{display:none}.panel.active{display:block}
+
+/* FOOD CARDS */
+.food-grid{padding:8px 16px 100px}
+.food-card{background:var(--surface);border:1.5px solid var(--border);border-radius:18px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all 0.22s cubic-bezier(0.34,1.3,0.64,1);box-shadow:0 2px 10px var(--shadow);position:relative;overflow:hidden;animation:cardIn 0.35s ease both}
+@keyframes cardIn{from{opacity:0;transform:translateY(12px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.food-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px var(--shadow2);border-color:var(--honey)}
+.food-card.today-pick{border-color:var(--honey);background:linear-gradient(135deg,#fffdf4,#fff8e4);box-shadow:0 4px 20px rgba(240,165,0,0.18)}
+.card-emoji-wrap{width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,var(--warm),var(--warm2));border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;transition:transform 0.22s cubic-bezier(0.34,1.5,0.64,1)}
+.food-card:hover .card-emoji-wrap{transform:scale(1.1) rotate(-5deg)}
+.card-body{flex:1;min-width:0}
+.card-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px}
+.card-cat{font-family:'DM Mono',monospace;font-size:10px;background:var(--warm);color:var(--text2);padding:2px 8px;border-radius:5px;border:1px solid var(--border)}
+.card-note{font-size:11px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;font-style:italic}
+.card-adder{font-size:10px;color:var(--text4);display:flex;align-items:center;gap:3px}
+.adder-dot{width:13px;height:13px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:white;flex-shrink:0}
+.card-score-wrap{text-align:center;flex-shrink:0}
+.card-score{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;line-height:1;background:linear-gradient(135deg,var(--tomato),var(--honey));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.card-score-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4)}
+.today-badge{position:absolute;top:10px;right:10px;background:linear-gradient(135deg,var(--honey),var(--honey2));color:white;font-size:9px;font-family:'DM Mono',monospace;padding:2px 8px;border-radius:10px;box-shadow:0 2px 8px rgba(240,165,0,0.4)}
+
+/* SEC HEADER */
+.sec-header{padding:16px 16px 8px;display:flex;align-items:flex-end;justify-content:space-between}
+.sec-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text)}
+.sec-title em{color:var(--tomato);font-style:italic}
+.sec-count{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:2px}
+
+/* SORT */
+.sort-strip{padding:8px 16px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.sort-pill{flex-shrink:0;padding:6px 14px;border-radius:20px;border:1.5px solid var(--border2);background:var(--surface);color:var(--text3);font-size:12px;font-family:'Noto Serif SC',serif;cursor:pointer;transition:all 0.18s;white-space:nowrap}
+.sort-pill.active{background:linear-gradient(135deg,var(--tomato2),var(--tomato));border-color:var(--tomato);color:white;box-shadow:0 3px 10px rgba(232,76,43,0.28)}
+
+/* ADD FORM */
+.add-section{padding:8px 16px 100px}
+.form-card{background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:22px;box-shadow:0 4px 20px var(--shadow)}
+.form-heading{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text);margin-bottom:18px}
+.field-label{display:block;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:0.14em;color:var(--text3);text-transform:uppercase;margin-bottom:7px}
+.field-wrap{margin-bottom:16px}
+.text-input{width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:11px;padding:11px 14px;font-size:14px;font-family:'Noto Serif SC',serif;color:var(--text);outline:none;transition:border-color 0.2s,box-shadow 0.2s}
+.text-input:focus{border-color:var(--tomato);box-shadow:0 0 0 3px rgba(232,76,43,0.1)}
+.text-input::placeholder{color:var(--text4);font-style:italic}
+.cat-grid{display:flex;flex-wrap:wrap;gap:8px}
+.cat-btn{padding:7px 14px;border-radius:25px;border:1.5px solid var(--border2);background:var(--bg2);color:var(--text3);font-size:13px;font-family:'Noto Serif SC',serif;cursor:pointer;transition:all 0.18s}
+.cat-btn:hover{border-color:var(--tomato);color:var(--tomato);background:rgba(232,76,43,0.05)}
+.cat-btn.cat-add-btn{border-style:dashed;color:var(--tomato);border-color:rgba(232,76,43,0.4);background:rgba(232,76,43,0.04)}
+.cat-btn.selected{background:linear-gradient(135deg,var(--tomato2),var(--tomato));border-color:var(--tomato);color:white;box-shadow:0 3px 10px rgba(232,76,43,0.25)}
+.score-widget{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#fff8ee,#fff0d8);border:1.5px solid var(--border2);border-radius:14px;padding:14px 16px}
+.score-big{font-family:'Playfair Display',serif;font-size:42px;font-weight:900;line-height:1;background:linear-gradient(135deg,var(--tomato),var(--honey));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;min-width:52px;text-align:center}
+.score-slider-wrap{flex:1}
+.slider{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;outline:none;cursor:pointer;background:linear-gradient(to right,#e84c2b 0%,#f0a500 77%,#f0d9b8 77%)}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:white;border:2.5px solid var(--tomato);box-shadow:0 2px 10px rgba(232,76,43,0.3);cursor:pointer;transition:transform 0.15s}
+.slider::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.score-flavor{font-size:11px;color:var(--text3);margin-top:5px;text-align:center;font-style:italic}
+.submit-btn{width:100%;padding:14px;border-radius:13px;border:none;background:linear-gradient(135deg,#f97c3a,#e84c2b);color:white;font-size:15px;font-family:'Noto Serif SC',serif;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 5px 18px rgba(232,76,43,0.35);margin-top:8px;letter-spacing:0.04em}
+.submit-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(232,76,43,0.45)}
+.submit-btn:active{transform:scale(0.98)}
+.submit-btn:disabled{opacity:0.6;cursor:not-allowed;transform:none}
+
+/* CHAT */
+.chat-panel{padding:8px 16px 100px;display:flex;flex-direction:column;min-height:calc(100vh - 240px)}
+.api-notice-card{background:linear-gradient(135deg,#fff9f0,#ffefd8);border:1.5px solid var(--border2);border-radius:14px;padding:14px;display:flex;gap:10px;margin-bottom:12px}
+.notice-text{font-size:12px;color:var(--text2);line-height:1.75}
+.notice-text a{color:var(--tomato);font-weight:600}
+.api-row{display:flex;gap:8px;margin-bottom:14px}
+.api-input{flex:1;background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;padding:10px 13px;font-size:12px;font-family:'DM Mono',monospace;color:var(--text);outline:none}
+.api-input:focus{border-color:var(--tomato)}
+.api-save-btn{padding:10px 16px;background:linear-gradient(135deg,var(--tomato2),var(--tomato));color:white;border:none;border-radius:10px;font-size:13px;font-family:'Noto Serif SC',serif;font-weight:600;cursor:pointer;white-space:nowrap}
+.chat-log{flex:1;overflow-y:auto;padding-bottom:12px;scrollbar-width:thin}
+.bubble-wrap{display:flex;margin-bottom:10px;animation:fadeIn 0.25s ease}
+.bubble-wrap.user{justify-content:flex-end}
+.bubble{max-width:82%;padding:11px 15px;border-radius:18px;font-size:14px;line-height:1.65}
+.bubble.user{background:linear-gradient(135deg,var(--tomato2),var(--tomato));color:white;border-bottom-right-radius:5px}
+.bubble.ai{background:var(--surface);border:1.5px solid var(--border);color:var(--text);border-bottom-left-radius:5px;box-shadow:0 2px 8px var(--shadow)}
+.bubble.ai.thinking{color:var(--text4);font-style:italic}
+.chat-row{display:flex;gap:8px;padding-top:12px;border-top:1.5px solid var(--warm)}
+.chat-textarea{flex:1;background:var(--surface);border:1.5px solid var(--border);border-radius:22px;padding:10px 16px;font-size:13px;font-family:'Noto Serif SC',serif;color:var(--text);outline:none;resize:none;max-height:100px;transition:border-color 0.2s}
+.chat-textarea:focus{border-color:var(--tomato)}
+.chat-textarea::placeholder{color:var(--text4);font-style:italic}
+.chat-send{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--tomato2),var(--tomato));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:flex-end;box-shadow:0 4px 14px rgba(232,76,43,0.38);transition:transform 0.15s}
+.chat-send:hover{transform:scale(1.08)}
+
+/* SETTINGS */
+.settings-panel{padding:8px 16px 100px}
+.settings-block{background:var(--surface);border:1.5px solid var(--border);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 2px 10px var(--shadow)}
+.settings-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:14px}
+.stat-row{display:flex;align-items:baseline;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--warm2);font-size:13px}
+.stat-row:last-child{border-bottom:none}
+.stat-label{color:var(--text3)}
+.stat-val{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--tomato);max-width:180px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.member-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--warm2)}
+.member-row:last-child{border-bottom:none}
+.member-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0}
+.danger-btn{width:100%;padding:11px;border-radius:11px;border:1.5px solid rgba(232,76,43,0.3);background:rgba(232,76,43,0.04);color:var(--tomato);font-size:13px;font-family:'Noto Serif SC',serif;font-weight:600;cursor:pointer;transition:all 0.2s;margin-bottom:8px}
+.danger-btn:hover{background:var(--tomato);color:white;border-color:var(--tomato)}
+.danger-btn:last-child{margin-bottom:0}
+
+/* FAB */
+.fab{position:fixed;bottom:28px;right:20px;width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#f97c3a,#e84c2b);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(232,76,43,0.45);transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1);z-index:60}
+.fab:hover{transform:scale(1.12) rotate(6deg)}
+.fab svg{width:24px;height:24px;color:white}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(100,50,20,0.45);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s}
+.overlay.open{opacity:1;pointer-events:all}
+.sheet{background:var(--surface);border-top-left-radius:26px;border-top-right-radius:26px;padding:16px 20px 48px;width:100%;max-width:500px;transform:translateY(100%);transition:transform 0.32s cubic-bezier(0.34,1.4,0.64,1);max-height:88vh;overflow-y:auto;box-shadow:0 -8px 40px var(--shadow2)}
+.overlay.open .sheet{transform:translateY(0)}
+.sheet-handle{width:38px;height:4px;background:var(--warm2);border-radius:2px;margin:0 auto 20px}
+.sheet-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px}
+.sheet-adder{font-size:12px;color:var(--text3);margin-bottom:14px}
+.detail-score-hero{display:flex;align-items:center;gap:18px;padding:16px;background:linear-gradient(135deg,#fff9ee,#fff0d4);border:1.5px solid var(--border2);border-radius:15px;margin:14px 0 18px}
+.detail-score-num{font-family:'Playfair Display',serif;font-size:54px;font-weight:900;line-height:1;background:linear-gradient(135deg,var(--tomato),var(--honey));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.detail-btns{display:flex;gap:10px}
+.btn-save{flex:2;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--tomato2),var(--tomato));color:white;font-size:14px;font-family:'Noto Serif SC',serif;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(232,76,43,0.3)}
+.btn-save:disabled{opacity:0.5;cursor:not-allowed}
+.btn-delete{flex:1;padding:12px;border-radius:12px;border:1.5px solid rgba(232,76,43,0.3);background:transparent;color:var(--tomato);font-size:13px;font-family:'Noto Serif SC',serif;cursor:pointer;transition:all 0.2s}
+.btn-delete:hover{background:var(--tomato);color:white}
+
+/* EMPTY */
+.empty{padding:48px 20px;text-align:center}
+.empty-emoji{font-size:52px;margin-bottom:14px}
+.empty-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px}
+.empty-sub{font-size:13px;color:var(--text3);line-height:1.7;font-style:italic}
+
+/* TOAST */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--tomato2),var(--tomato));color:white;padding:10px 22px;border-radius:30px;font-size:13px;font-family:'Noto Serif SC',serif;font-weight:600;z-index:9000;white-space:nowrap;animation:toastIn 0.3s cubic-bezier(0.34,1.6,0.64,1);box-shadow:0 6px 22px rgba(232,76,43,0.4)}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(16px) scale(0.9)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:4px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">饭<em>本</em></div>
+    <div class="login-sub">我们今天吃什么？</div>
+    <label class="login-label">你的昵称</label>
+    <input class="login-input" id="loginName" type="text" placeholder="随便起个名字～" maxlength="10" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">进入饭本 🍜</button>
+    <div class="login-hint">昵称会显示在你添加的每条记录上<br>朋友们用同一个链接进入，共享饭本</div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div class="setup-screen" id="setupScreen" style="display:none">
+  <div class="setup-box">
+    <div class="setup-title">🔧 首次配置数据库</div>
+    <div class="setup-sub">需要配置一次 Supabase，之后所有人共享同一份数据，实时同步。</div>
+    <div class="setup-field">
+      <label class="setup-label">Project URL</label>
+      <input class="setup-input" id="setupUrl" type="text" placeholder="https://xxxxxx.supabase.co">
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Anon Public Key</label>
+      <input class="setup-input" id="setupKey" type="password" placeholder="eyJhbGciOiJIUzI1NiIs...">
+    </div>
+    <button class="setup-btn" id="setupBtn" onclick="saveSetup()">连接并进入饭本</button>
+    <div class="setup-note">
+      <strong>📖 三步获取 Supabase 信息：</strong><br>
+      1. 注册 <a href="https://supabase.com" target="_blank">supabase.com</a>（免费）<br>
+      2. 新建 Project → 左侧 <strong>Settings → API</strong><br>
+      3. 复制 <strong>Project URL</strong> 和 <strong>anon public key</strong><br><br>
+      <strong>🗄️ 然后在 SQL Editor 里运行一次：</strong>
+      <div class="sql-block">CREATE TABLE foods (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  name text NOT NULL,
+  link text,
+  note text,
+  score integer NOT NULL DEFAULT 8,
+  category text,
+  added_by text,
+  added_at timestamptz DEFAULT now()
+);
+ALTER TABLE foods ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow all" ON foods FOR ALL USING (true) WITH CHECK (true);</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" style="display:none">
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="steam-bg" id="steamBg"></div>
+    <div class="header-eyebrow">饭本 · Fan Ben</div>
+    <div class="header-logo">今日<em>吃什么</em></div>
+    <div class="header-sub">大家的美食收藏 · 每日智能推荐</div>
+  </div>
+  <div class="header-strip">
+    <div class="date-text" id="dateText"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="sync-dot syncing" id="syncDot" title="同步中"></span>
+      <div class="user-chip" onclick="switchTab('cfg')">
+        <div class="user-avatar" id="headerAvatar"></div>
+        <span class="user-name" id="headerName"></span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div id="todayHero"></div>
+
+<div class="tab-bar">
+  <div class="tab-item active" onclick="switchTab('rec')">🍽 推荐</div>
+  <div class="tab-item" onclick="switchTab('list')">❤️ 收藏</div>
+  <div class="tab-item" onclick="switchTab('add')">＋ 添加</div>
+  <div class="tab-item" onclick="switchTab('chat')">💬 聊聊</div>
+  <div class="tab-item" onclick="switchTab('cfg')">⚙️</div>
+</div>
+
+<div class="panel active" id="panel-rec"><div id="topPicksArea"></div></div>
+
+<div class="panel" id="panel-list">
+  <div class="sort-strip">
+    <button class="sort-pill active" onclick="setSort('score',this)">评分最高</button>
+    <button class="sort-pill" onclick="setSort('name',this)">名字排序</button>
+    <button class="sort-pill" onclick="setSort('recent',this)">最近添加</button>
+  </div>
+  <div class="food-grid" id="foodGrid"></div>
+</div>
+
+<div class="panel" id="panel-add">
+  <div class="add-section">
+    <div class="form-card">
+      <div class="form-heading">✨ 记录新发现</div>
+      <div class="field-wrap">
+        <label class="field-label">餐厅名称 / 高德链接</label>
+        <input type="text" class="text-input" id="inp-name" placeholder="老四川担担面 · 或粘贴高德链接" oninput="onNameInput(this)">
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">备注</label>
+        <input type="text" class="text-input" id="inp-note" placeholder="人均、特色菜、推荐理由…">
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">分类</label>
+        <div class="cat-grid" id="catGrid"></div>
+        <div id="customCatRow" style="display:none;margin-top:10px">
+          <input type="text" class="text-input" id="customCatInput" placeholder="输入自定义分类名…" style="margin-bottom:8px" maxlength="8" onkeydown="if(event.key==='Enter')confirmCustomCat()">
+          <div style="display:flex;gap:8px">
+            <button onclick="confirmCustomCat()" style="flex:1;padding:9px;border-radius:10px;border:none;background:linear-gradient(135deg,#f97c3a,#e84c2b);color:white;font-size:13px;font-family:'Noto Serif SC',serif;cursor:pointer;font-weight:600">确定</button>
+            <button onclick="cancelCustomCat()" style="padding:9px 14px;border-radius:10px;border:1.5px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;font-family:'Noto Serif SC',serif;cursor:pointer">取消</button>
+          </div>
+        </div>
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">你的评分</label>
+        <div class="score-widget">
+          <div class="score-big" id="addScoreNum">8</div>
+          <div class="score-slider-wrap">
+            <input type="range" class="slider" id="addSlider" min="1" max="10" value="8" oninput="onAddScore(this.value)">
+            <div class="score-flavor" id="scoreFlavor">很好吃</div>
+          </div>
+        </div>
+      </div>
+      <button class="submit-btn" id="submitBtn" onclick="addFood()">🥢 加入饭本</button>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="panel-chat">
+  <div class="chat-panel">
+    <div class="api-notice-card">
+      <div style="font-size:20px;flex-shrink:0">🧑‍🍳</div>
+      <div class="notice-text">填入 Anthropic API Key 后，AI 可帮大家推荐、调整评分。<a href="https://console.anthropic.com" target="_blank">获取 Key →</a></div>
+    </div>
+    <div class="api-row">
+      <input type="password" class="api-input" id="chatApiKey" placeholder="sk-ant-...">
+      <button class="api-save-btn" onclick="saveApiKey()">保存</button>
+    </div>
+    <div class="chat-log" id="chatLog"></div>
+    <div class="chat-row">
+      <textarea class="chat-textarea" id="chatInput" placeholder="「今天想吃辣的」「把海底捞改成9分」…" rows="1" onkeydown="onChatKey(event)"></textarea>
+      <button class="chat-send" onclick="sendChat()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="panel-cfg">
+  <div class="settings-panel">
+    <div class="settings-block">
+      <div class="settings-title">👥 饭本成员</div>
+      <div id="membersArea"><div style="color:var(--text4);font-size:13px">加载中…</div></div>
+    </div>
+    <div class="settings-block">
+      <div class="settings-title">📊 饭本统计</div>
+      <div id="statsArea"></div>
+    </div>
+    <div class="settings-block">
+      <div class="settings-title">🔑 Anthropic API Key</div>
+      <div class="api-row" style="margin-bottom:0">
+        <input type="password" class="api-input" id="cfgApiKey" placeholder="sk-ant-...">
+        <button class="api-save-btn" onclick="saveCfgKey()">保存</button>
+      </div>
+    </div>
+    <div class="settings-block">
+      <div class="settings-title">🔧 其他设置</div>
+      <button class="danger-btn" onclick="showSetup()">重新配置 Supabase 数据库</button>
+      <button class="danger-btn" onclick="doLogout()">切换昵称</button>
+    </div>
+  </div>
+</div>
+
+<button class="fab" id="fab" style="display:none" onclick="switchTab('add')">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+</button>
+
+<div class="overlay" id="detailOv" onclick="closeDetailBg(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="detailTitle"></div>
+    <div class="sheet-adder" id="detailAdder"></div>
+    <div id="detailMeta" style="font-size:12px;color:var(--text4);font-style:italic;margin-bottom:4px"></div>
+    <div class="detail-score-hero">
+      <div class="detail-score-num" id="detailNum">8</div>
+      <div style="flex:1">
+        <label class="field-label" style="margin-bottom:8px">调整评分</label>
+        <input type="range" class="slider" id="detailSlider" min="1" max="10" value="8" oninput="onDetailScore(this.value)">
+        <div class="score-flavor" id="detailFlavor" style="text-align:left;margin-top:4px"></div>
+      </div>
+    </div>
+    <div class="detail-btns">
+      <button class="btn-delete" id="btnDelete" onclick="deleteFood()">删除</button>
+      <button class="btn-save" id="btnSave" onclick="saveDetail()">保存评分</button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ═══════════ STATE ═══════════
+let sb = null;
+let foods = [];
+let chatHistory = [];
+let apiKey = localStorage.getItem('fb_apikey') || '';
+let sortMode = 'score';
+let editId = null;
+let selectedCat = '';
+let currentUser = null;
+let realtimeCh = null;
+
+const EMOJIS = {川湘:'🌶',日料:'🍣',粤菜:'🍵',火锅:'🫕',快餐:'🍔',面食:'🍜',烧烤:'🔥',甜点:'🍰',其他:'🍽'};
+const FLAVORS = ['','差点意思','将就吧','还行哦','不错哦','有点香','挺好的','很好吃','相当棒','强烈推荐','满分神店 🏆'];
+const COLORS = ['#e84c2b','#f0a500','#5b9e6e','#4a90d9','#9b59b6','#e67e22','#1abc9c','#e91e63'];
+const uColor = n => { let h=0; for(let c of (n||'?')) h=(h*31+c.charCodeAt(0))%COLORS.length; return COLORS[h]; };
+const uInit = n => (n||'?')[0].toUpperCase();
+
+// ═══════════ INIT ═══════════
+(function(){
+  const d = new Date();
+  const M = ['一','二','三','四','五','六','七','八','九','十','十一','十二'];
+  const de = document.getElementById('dateText');
+  if(de) de.textContent = `${d.getFullYear()} 年 ${M[d.getMonth()]} 月 ${d.getDate()} 日`;
+
+  const u = localStorage.getItem('fb_user');
+  const cfg = localStorage.getItem('fb_sbcfg');
+  if(u && cfg){ currentUser=JSON.parse(u); startApp(JSON.parse(cfg)); }
+  else if(u){ currentUser=JSON.parse(u); showSetup(); }
+  else { document.getElementById('loginScreen').style.display='flex'; }
+})();
+
+// ═══════════ LOGIN / SETUP ═══════════
+function doLogin(){
+  const n = document.getElementById('loginName').value.trim();
+  if(!n){ document.getElementById('loginName').focus(); return; }
+  currentUser = { name:n, color:uColor(n) };
+  localStorage.setItem('fb_user', JSON.stringify(currentUser));
+  document.getElementById('loginScreen').style.display='none';
+  const cfg = localStorage.getItem('fb_sbcfg');
+  cfg ? startApp(JSON.parse(cfg)) : showSetup();
+}
+
+function showSetup(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('mainApp').style.display='none';
+  document.getElementById('setupScreen').style.display='flex';
+  const cfg = localStorage.getItem('fb_sbcfg');
+  if(cfg){ const {url,key}=JSON.parse(cfg); document.getElementById('setupUrl').value=url||''; document.getElementById('setupKey').value=key||''; }
+}
+
+async function saveSetup(){
+  const url = document.getElementById('setupUrl').value.trim();
+  const key = document.getElementById('setupKey').value.trim();
+  if(!url||!key){ showToast('⚠️ 请填写完整'); return; }
+  const btn = document.getElementById('setupBtn');
+  btn.innerHTML='<span class="spinner"></span>连接中…'; btn.disabled=true;
+  try{
+    const client = window.supabase.createClient(url,key);
+    const {error} = await client.from('foods').select('id').limit(1);
+    if(error && !error.message.includes('0 rows')) throw error;
+    localStorage.setItem('fb_sbcfg', JSON.stringify({url,key}));
+    document.getElementById('setupScreen').style.display='none';
+    startApp({url,key});
+  }catch(e){
+    btn.innerHTML='连接并进入饭本'; btn.disabled=false;
+    showToast('❌ 连接失败：'+(e.message||'请检查信息'));
+  }
+}
+
+async function startApp(cfg){
+  sb = window.supabase.createClient(cfg.url, cfg.key);
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('setupScreen').style.display='none';
+  document.getElementById('mainApp').style.display='block';
+
+  document.getElementById('headerName').textContent = currentUser.name;
+  const av = document.getElementById('headerAvatar');
+  av.textContent = uInit(currentUser.name);
+  av.style.background = currentUser.color;
+
+  const bg = document.getElementById('steamBg');
+  for(let i=0;i<10;i++){
+    const s=document.createElement('div'); s.className='steam-line';
+    const sz=20+Math.random()*40;
+    s.style.cssText=`left:${5+i*10}%;width:${sz}px;height:${sz}px;animation-delay:${i*0.45}s;animation-duration:${4+Math.random()*3}s`;
+    bg.appendChild(s);
+  }
+
+  await loadFoods();
+  setupRealtime();
+  renderTodayHero(); renderTopPicks(); onAddScore(8); renderCatGrid();
+}
+
+function doLogout(){
+  if(realtimeCh) sb.removeChannel(realtimeCh);
+  localStorage.removeItem('fb_user');
+  currentUser=null; foods=[];
+  document.getElementById('mainApp').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginName').value='';
+}
+
+// ═══════════ SUPABASE ═══════════
+function setSyncDot(s){ const d=document.getElementById('syncDot'); if(d){ d.className='sync-dot '+s; d.title={syncing:'同步中',ok:'已同步',error:'同步失败'}[s]||''; } }
+
+function rowToFood(r){ return {id:r.id,name:r.name,link:r.link||'',note:r.note||'',score:r.score,category:r.category||'',addedBy:r.added_by||'',addedAt:new Date(r.added_at).getTime()}; }
+
+async function loadFoods(){
+  setSyncDot('syncing');
+  try{
+    const {data,error} = await sb.from('foods').select('*').order('added_at',{ascending:false});
+    if(error) throw error;
+    foods = (data||[]).map(rowToFood);
+    setSyncDot('ok');
+  }catch(e){ setSyncDot('error'); showToast('⚠️ 加载失败，检查数据库配置'); }
+}
+
+async function dbInsert(f){
+  setSyncDot('syncing');
+  const {data,error} = await sb.from('foods').insert({name:f.name,link:f.link||null,note:f.note||null,score:f.score,category:f.category||null,added_by:currentUser.name,added_at:new Date().toISOString()}).select().single();
+  if(error){ setSyncDot('error'); throw error; }
+  setSyncDot('ok'); return rowToFood(data);
+}
+
+async function dbUpdate(id,score){
+  setSyncDot('syncing');
+  const {error} = await sb.from('foods').update({score}).eq('id',id);
+  if(error){ setSyncDot('error'); throw error; }
+  setSyncDot('ok');
+}
+
+async function dbDelete(id){
+  setSyncDot('syncing');
+  const {error} = await sb.from('foods').delete().eq('id',id);
+  if(error){ setSyncDot('error'); throw error; }
+  setSyncDot('ok');
+}
+
+function setupRealtime(){
+  if(!sb) return;
+  realtimeCh = sb.channel('foods-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'foods'}, payload => {
+      const ev = payload.eventType;
+      if(ev==='INSERT'){
+        const f=rowToFood(payload.new);
+        if(!foods.find(x=>x.id===f.id)){
+          foods.unshift(f);
+          if(f.addedBy!==currentUser.name) showToast(`🍜 ${f.addedBy} 添加了「${f.name}」`);
+        }
+      } else if(ev==='UPDATE'){
+        const f=rowToFood(payload.new);
+        const i=foods.findIndex(x=>x.id===f.id);
+        if(i>=0) foods[i]=f;
+      } else if(ev==='DELETE'){
+        foods=foods.filter(x=>x.id!==payload.old.id);
+      }
+      renderTodayHero(); renderTopPicks();
+      if(document.getElementById('panel-list').classList.contains('active')) renderGrid();
+      setSyncDot('ok');
+    }).subscribe();
+}
+
+// ═══════════ TODAY ═══════════
+function getToday(){
+  if(!foods.length) return null;
+  const key='fb_rec_'+new Date().toDateString();
+  const cid=localStorage.getItem(key);
+  if(cid){ const f=foods.find(x=>x.id===cid); if(f) return f; }
+  const recent=[];
+  for(let i=1;i<=3;i++){ const d=new Date();d.setDate(d.getDate()-i);const k=localStorage.getItem('fb_rec_'+d.toDateString());if(k)recent.push(k); }
+  const pool=foods.filter(f=>!recent.includes(f.id));
+  const base=pool.length?pool:foods;
+  const w=base.map(f=>({...f,w:Math.pow(f.score,2)*(0.6+Math.random()*0.8)}));
+  w.sort((a,b)=>b.w-a.w);
+  localStorage.setItem(key,w[0].id);
+  return w[0];
+}
+
+function reroll(){ localStorage.removeItem('fb_rec_'+new Date().toDateString()); renderTodayHero(); }
+
+function renderStars(s){ const f=Math.round(s/2); return Array.from({length:5},(_,i)=>`<span class="${i<f?'star-fill':'star-empty'}">${i<f?'★':'☆'}</span>`).join(''); }
+
+function buildReason(f){
+  const parts=[];
+  if(f.score>=9) parts.push(`${f.score} 分的满分选手，绝对不踩雷`);
+  else parts.push(`${f.score} 分的老朋友，稳稳的幸福`);
+  const day=new Date().getDay();
+  if(day===5) parts.push('周五了，好好犒劳一下');
+  else if(day===1) parts.push('周一需要一顿好吃的开个好头');
+  if(f.note) parts.push(`备注「${f.note}」`);
+  if(f.category==='火锅') parts.push('火锅治百病');
+  return parts.slice(0,2).join('。')+'。';
+}
+
+function renderTodayHero(){
+  const pick=getToday();
+  const hero=document.getElementById('todayHero'); if(!hero) return;
+  if(!pick){
+    hero.innerHTML=`<div style="margin:16px"><div style="background:linear-gradient(145deg,#fff0dc,#ffe4bc);border-radius:22px;min-height:120px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:28px;box-shadow:0 6px 24px rgba(200,120,40,0.12);border:1.5px solid #fbd9a8"><div style="font-size:38px">🍽</div><div style="color:var(--text3);font-size:14px;font-style:italic">还没有收藏，先去添加几家吧</div></div></div>`;
+    return;
+  }
+  const emoji=EMOJIS[pick.category]||'🍽';
+  const doodles=['🍜','🍣','🔥','🫕','🍔','🌶','🍰','🍵'];
+  const ac=pick.addedBy?uColor(pick.addedBy):'#ccc';
+  hero.innerHTML=`
+    <div class="today-hero">
+      <div class="today-bg">
+        ${doodles.map((d,i)=>`<div class="food-doodle" style="top:${10+Math.random()*75}%;left:${5+Math.random()*85}%;animation-delay:${i*0.9}s">${d}</div>`).join('')}
+        <div style="position:relative;z-index:2">
+          <div class="today-tag">今日推荐</div>
+          <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px">
+            <div style="font-size:52px;line-height:1;filter:drop-shadow(0 3px 8px rgba(200,100,30,0.2))">${emoji}</div>
+            <div>
+              <div class="today-name">${pick.name}</div>
+              <div class="today-score-row">
+                <div class="today-stars">${renderStars(pick.score)}</div>
+                <span class="score-n">${pick.score}</span><span class="score-d">/10</span>
+                ${pick.category?`<span class="cat-badge">${pick.category}</span>`:''}
+              </div>
+            </div>
+          </div>
+          <div class="today-reason">${buildReason(pick)}</div>
+          ${pick.addedBy?`<div class="today-added-by"><span style="width:15px;height:15px;border-radius:50%;background:${ac};display:inline-flex;align-items:center;justify-content:center;font-size:8px;color:white;font-weight:700">${uInit(pick.addedBy)}</span> ${pick.addedBy} 推荐的</div>`:''}
+        </div>
+      </div>
+      <div class="today-actions">
+        <button class="btn-reroll" onclick="reroll()">🎲 换一家</button>
+        ${pick.link?`<button class="btn-nav" onclick="window.open('${pick.link}','_blank')">📍 高德导航</button>`:''}
+      </div>
+    </div>`;
+}
+
+// ═══════════ RENDER ═══════════
+function renderTopPicks(){
+  const area=document.getElementById('topPicksArea'); if(!area) return;
+  if(!foods.length){ area.innerHTML=`<div class="empty"><div class="empty-emoji">🥢</div><div class="empty-title">饭本还是空的</div><div class="empty-sub">大家一起去「添加」记录喜欢的餐厅</div></div>`; return; }
+  const top5=[...foods].sort((a,b)=>b.score-a.score).slice(0,5);
+  area.innerHTML=`<div class="sec-header"><div class="sec-title">大家的<em>高分</em>榜</div><div class="sec-count">${foods.length} 家收藏</div></div><div class="food-grid">${top5.map((f,i)=>cardHTML(f,i)).join('')}</div>`;
+}
+
+function cardHTML(f,delay){
+  const today=getToday(); const isToday=today?.id===f.id;
+  const emoji=EMOJIS[f.category]||'🍽'; const c=f.addedBy?uColor(f.addedBy):'#ccc';
+  return `<div class="food-card ${isToday?'today-pick':''}" onclick="openDetail('${f.id}')" style="animation-delay:${delay*0.06}s">
+    ${isToday?'<div class="today-badge">今日</div>':''}
+    <div class="card-emoji-wrap">${emoji}</div>
+    <div class="card-body">
+      <div class="card-name">${f.name}</div>
+      <div class="card-meta">${f.category?`<span class="card-cat">${f.category}</span>`:''} ${f.note?`<span class="card-note">${f.note}</span>`:''}</div>
+      ${f.addedBy?`<div class="card-adder"><span class="adder-dot" style="background:${c}">${uInit(f.addedBy)}</span>${f.addedBy}</div>`:''}
+    </div>
+    <div class="card-score-wrap"><div class="card-score">${f.score}</div><div class="card-score-label">分</div></div>
+  </div>`;
+}
+
+function renderGrid(){
+  const grid=document.getElementById('foodGrid'); if(!grid) return;
+  if(!foods.length){ grid.innerHTML=`<div class="empty"><div class="empty-emoji">📖</div><div class="empty-title">饭本空空如也</div><div class="empty-sub">点右下角 <strong style="color:var(--tomato)">+</strong> 添加第一家</div></div>`; return; }
+  let sorted=[...foods];
+  if(sortMode==='score') sorted.sort((a,b)=>b.score-a.score);
+  else if(sortMode==='name') sorted.sort((a,b)=>a.name.localeCompare(b.name));
+  grid.innerHTML=sorted.map((f,i)=>cardHTML(f,i)).join('');
+}
+
+function setSort(mode,el){ sortMode=mode; document.querySelectorAll('.sort-pill').forEach(p=>p.classList.remove('active')); el.classList.add('active'); renderGrid(); }
+
+// ═══════════ TABS ═══════════
+function switchTab(tab){
+  document.querySelectorAll('.tab-item').forEach((el,i)=>el.classList.toggle('active',['rec','list','add','chat','cfg'][i]===tab));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+  document.getElementById('fab').style.display=tab==='list'?'flex':'none';
+  if(tab==='rec'){renderTodayHero();renderTopPicks();}
+  if(tab==='list') renderGrid();
+  if(tab==='chat') initChat();
+  if(tab==='cfg') renderStats();
+}
+
+// ═══════════ CATEGORIES ═══════════
+const DEFAULT_CATS=[{v:'川湘',e:'🌶'},{v:'日料',e:'🍣'},{v:'粤菜',e:'🍵'},{v:'火锅',e:'🫕'},{v:'快餐',e:'🍔'},{v:'面食',e:'🍜'},{v:'烧烤',e:'🔥'},{v:'甜点',e:'🍰'},{v:'其他',e:'🍽'}];
+const loadCats=()=>{ const s=localStorage.getItem('fb_cats'); return s?JSON.parse(s):[...DEFAULT_CATS]; };
+const saveCats=c=>localStorage.setItem('fb_cats',JSON.stringify(c));
+
+function renderCatGrid(){
+  const cats=loadCats(); const grid=document.getElementById('catGrid'); if(!grid) return;
+  grid.innerHTML=cats.map(c=>`<button class="cat-btn ${selectedCat===c.v?'selected':''}" onclick="pickCat(this)" data-v="${c.v}" data-custom="${c.custom||false}" oncontextmenu="deleteCatPrompt(event,this,'${c.v}')">${c.e} ${c.v}</button>`).join('')+`<button class="cat-btn cat-add-btn" onclick="showCustomCatInput()">＋ 自定义</button>`;
+  grid.querySelectorAll('.cat-btn[data-custom="true"]').forEach(btn=>{
+    let t; btn.addEventListener('touchstart',()=>{t=setTimeout(()=>deleteCatPrompt(null,btn,btn.dataset.v),600)}); btn.addEventListener('touchend',()=>clearTimeout(t)); btn.addEventListener('touchmove',()=>clearTimeout(t));
+  });
+}
+function pickCat(el){ if(el.classList.contains('cat-add-btn'))return; document.querySelectorAll('#catGrid .cat-btn').forEach(b=>b.classList.remove('selected')); el.classList.add('selected'); selectedCat=el.dataset.v; }
+function showCustomCatInput(){ document.getElementById('customCatRow').style.display='block'; document.getElementById('customCatInput').focus(); }
+function cancelCustomCat(){ document.getElementById('customCatRow').style.display='none'; document.getElementById('customCatInput').value=''; }
+function confirmCustomCat(){
+  const input=document.getElementById('customCatInput'); const val=input.value.trim(); if(!val){input.focus();return;}
+  const cats=loadCats(); if(cats.find(c=>c.v===val)){showToast('该分类已存在');return;}
+  const em=[['咖啡','☕'],['奶茶','🧋'],['西餐','🍽'],['海鲜','🦞'],['素食','🥗'],['小吃','🥟'],['粥','🍚'],['汤','🥣'],['披萨','🍕'],['寿司','🍱']];
+  const m=em.find(([k])=>val.includes(k));
+  cats.push({v:val,e:m?m[1]:'🏷',custom:true}); saveCats(cats); cancelCustomCat(); selectedCat=val; renderCatGrid(); showToast(`✅ 已添加分类「${val}」`);
+}
+function deleteCatPrompt(e,btn,val){
+  if(e)e.preventDefault(); if(!btn.dataset.custom||btn.dataset.custom==='false')return;
+  if(!confirm(`删除自定义分类「${val}」？`))return;
+  saveCats(loadCats().filter(c=>c.v!==val)); if(selectedCat===val)selectedCat=''; renderCatGrid(); showToast(`已删除分类「${val}」`);
+}
+
+// ═══════════ ADD FOOD ═══════════
+function updateSliderBg(s){ const p=(s.value-1)/9*100; s.style.background=`linear-gradient(to right,#e84c2b 0%,#f0a500 ${p}%,#f0d9b8 ${p}%)`; }
+function onAddScore(v){ const n=document.getElementById('addScoreNum'),f=document.getElementById('scoreFlavor'),s=document.getElementById('addSlider'); if(n)n.textContent=v; if(f)f.textContent=FLAVORS[v]||''; if(s)updateSliderBg(s); }
+function parseAmap(t){ if(!t.startsWith('http'))return{name:t,link:''}; const ps=[/[?&]name=([^&]+)/,/[?&]poiname=([^&]+)/,/[?&]keywords=([^&]+)/]; for(const r of ps){const m=t.match(r);if(m)return{name:decodeURIComponent(m[1].replace(/\+/g,' ')),link:t};} return{name:'',link:t}; }
+function onNameInput(el){ const v=el.value.trim(); if(v.startsWith('http')){ const{name,link}=parseAmap(v); const ne=document.getElementById('inp-note'); if(name){el.value=name;if(!ne.value)ne.value=link;showToast('✅ 已从高德链接解析店名');}else{if(!ne.value)ne.value=link;el.value='';el.placeholder='未能解析店名，请手动输入…';showToast('📎 链接已保存，请手动输入店名');} } }
+
+async function addFood(){
+  const raw=document.getElementById('inp-name').value.trim(); if(!raw){document.getElementById('inp-name').focus();return;}
+  if(raw.startsWith('http')){showToast('⚠️ 请输入店名，链接请放备注栏');return;}
+  const noteRaw=document.getElementById('inp-note').value.trim();
+  const link=noteRaw.startsWith('http')?noteRaw:''; const note=noteRaw.startsWith('http')?'':noteRaw;
+  const score=parseInt(document.getElementById('addSlider').value);
+  const btn=document.getElementById('submitBtn'); btn.disabled=true; btn.innerHTML='<span class="spinner"></span>保存中…';
+  try{
+    const f=await dbInsert({name:raw,link,note,score,category:selectedCat});
+    foods.unshift(f);
+    document.getElementById('inp-name').value=''; document.getElementById('inp-name').placeholder='老四川担担面 · 或粘贴高德链接';
+    document.getElementById('inp-note').value=''; document.getElementById('addSlider').value=8; onAddScore(8);
+    selectedCat=''; renderCatGrid();
+    showToast(`🎉「${raw}」已加入饭本`); renderTodayHero(); switchTab('list');
+  }catch(e){ showToast('❌ 保存失败：'+(e.message||'请检查网络')); }
+  finally{ btn.disabled=false; btn.innerHTML='🥢 加入饭本'; }
+}
+
+// ═══════════ DETAIL ═══════════
+function openDetail(id){
+  editId=id; const f=foods.find(x=>x.id===id); if(!f)return;
+  const emoji=EMOJIS[f.category]||'🍽'; const c=f.addedBy?uColor(f.addedBy):'#ccc';
+  document.getElementById('detailTitle').innerHTML=`${emoji} ${f.name}`;
+  document.getElementById('detailAdder').innerHTML=f.addedBy?`<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:14px;height:14px;border-radius:50%;background:${c};display:inline-flex;align-items:center;justify-content:center;font-size:8px;color:white;font-weight:700">${uInit(f.addedBy)}</span> ${f.addedBy} 添加</span>`:'';
+  document.getElementById('detailMeta').textContent=[f.category,f.note].filter(Boolean).join(' · ');
+  document.getElementById('detailSlider').value=f.score; document.getElementById('detailNum').textContent=f.score;
+  document.getElementById('detailFlavor').textContent=FLAVORS[f.score]||'';
+  updateSliderBg(document.getElementById('detailSlider'));
+  document.getElementById('detailOv').classList.add('open');
+}
+function onDetailScore(v){ document.getElementById('detailNum').textContent=v; document.getElementById('detailFlavor').textContent=FLAVORS[v]||''; updateSliderBg(document.getElementById('detailSlider')); }
+function closeDetailBg(e){ if(e.target.id==='detailOv')document.getElementById('detailOv').classList.remove('open'); }
+
+async function saveDetail(){
+  const f=foods.find(x=>x.id===editId); if(!f)return;
+  const ns=parseInt(document.getElementById('detailSlider').value);
+  const btn=document.getElementById('btnSave'); btn.disabled=true; btn.textContent='保存中…';
+  try{ await dbUpdate(editId,ns); f.score=ns; document.getElementById('detailOv').classList.remove('open'); renderGrid(); renderTodayHero(); showToast('评分已更新 ✓'); }
+  catch{ showToast('❌ 更新失败'); }
+  finally{ btn.disabled=false; btn.textContent='保存评分'; }
+}
+async function deleteFood(){
+  const f=foods.find(x=>x.id===editId); if(!confirm(`确定删除「${f?.name}」吗？`))return;
+  const btn=document.getElementById('btnDelete'); btn.disabled=true;
+  try{ await dbDelete(editId); foods=foods.filter(x=>x.id!==editId); document.getElementById('detailOv').classList.remove('open'); renderGrid(); renderTodayHero(); showToast('已删除'); }
+  catch{ showToast('❌ 删除失败'); btn.disabled=false; }
+}
+
+// ═══════════ CHAT ═══════════
+function initChat(){
+  document.getElementById('chatApiKey').value=apiKey;
+  if(!chatHistory.length) chatHistory.push({role:'ai',content:`你好 ${currentUser?.name}！我是饭本助手 🧑‍🍳\n\n你可以说：\n· 「推荐一家清淡的」\n· 「把XX的评分改成9分」\n· 「分析大家的口味偏好」`});
+  renderChatLog();
+}
+function renderChatLog(){ const log=document.getElementById('chatLog'); if(!log)return; log.innerHTML=chatHistory.map(m=>`<div class="bubble-wrap ${m.role}"><div class="bubble ${m.role} ${m.thinking?'thinking':''}">${m.thinking?'思考中…':m.content.replace(/\n/g,'<br>')}</div></div>`).join(''); log.scrollTop=log.scrollHeight; }
+function onChatKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();} }
+
+async function sendChat(){
+  const input=document.getElementById('chatInput'); const text=input.value.trim(); if(!text)return;
+  input.value=''; chatHistory.push({role:'user',content:text}); renderChatLog();
+  const re=/把(.{1,10}?)的?评分[调改设提降到成为]+\s*(\d+)/;
+  const m=text.match(re);
+  if(m){ const f=foods.find(x=>x.name.includes(m[1])); if(f){ const ns=Math.min(10,Math.max(1,parseInt(m[2]))); try{await dbUpdate(f.id,ns);f.score=ns;chatHistory.push({role:'ai',content:`好的！已将「${f.name}」评分更新为 ${ns} 分 ✓`});renderChatLog();renderTodayHero();renderGrid();return;}catch{chatHistory.push({role:'ai',content:'更新失败，请重试'});renderChatLog();return;} } }
+  if(!apiKey){ chatHistory.push({role:'ai',content:'需要填入 API Key 才能使用 AI 对话 🔑\n\n不过我可以直接帮你改评分，说「把XX的评分改成X分」就可以哦～'}); renderChatLog(); return; }
+  chatHistory.push({role:'ai',content:'',thinking:true}); renderChatLog();
+  const summary=foods.slice(0,25).map(f=>`${f.name}(${f.score}分${f.addedBy?','+f.addedBy+'推荐':''}${f.category?','+f.category:''})`).join('、');
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,system:`你是多人共享饭本的助手。收藏：${summary||'暂无'}。当前用户：${currentUser?.name}。帮推荐、分析、调整评分。若需更新评分：【评分更新:名字→分数】。中文，亲切，100字以内。`,messages:chatHistory.filter(m=>!m.thinking).slice(-8).map(m=>({role:m.role==='user'?'user':'assistant',content:m.content}))})});
+    const data=await res.json(); const reply=data.content?.[0]?.text||'出错了';
+    chatHistory=chatHistory.filter(m=>!m.thinking);
+    const up=reply.match(/【评分更新:(.+?)→(\d+)】/);
+    if(up){const f=foods.find(x=>x.name.includes(up[1]));if(f){const ns=Math.min(10,Math.max(1,parseInt(up[2])));await dbUpdate(f.id,ns);f.score=ns;renderTodayHero();renderGrid();}}
+    chatHistory.push({role:'ai',content:reply.replace(/【评分更新:.+?】/g,'').trim()});
+  }catch{ chatHistory=chatHistory.filter(m=>!m.thinking); chatHistory.push({role:'ai',content:'连接出错，请检查 API Key'}); }
+  renderChatLog();
+}
+function saveApiKey(){ apiKey=document.getElementById('chatApiKey').value.trim(); localStorage.setItem('fb_apikey',apiKey); showToast('API Key 已保存 ✓'); }
+function saveCfgKey(){ apiKey=document.getElementById('cfgApiKey').value.trim(); localStorage.setItem('fb_apikey',apiKey); showToast('API Key 已保存 ✓'); }
+
+// ═══════════ SETTINGS ═══════════
+function renderStats(){
+  document.getElementById('cfgApiKey').value=apiKey;
+  const members={};
+  foods.forEach(f=>{if(f.addedBy)members[f.addedBy]=(members[f.addedBy]||0)+1;});
+  const ma=document.getElementById('membersArea');
+  ma.innerHTML=Object.keys(members).length
+    ?Object.entries(members).sort((a,b)=>b[1]-a[1]).map(([n,cnt])=>`<div class="member-row"><div class="member-avatar" style="background:${uColor(n)}">${uInit(n)}</div><div style="flex:1"><strong>${n}</strong>${n===currentUser?.name?' <span style="font-size:10px;color:var(--tomato)">(你)</span>':''}</div><div style="font-family:\'DM Mono\',monospace;font-size:12px;color:var(--text3)">${cnt} 家</div></div>`).join('')
+    :'<div style="color:var(--text4);font-size:13px;font-style:italic">暂无数据</div>';
+  const sa=document.getElementById('statsArea');
+  if(!foods.length){sa.innerHTML='<div style="color:var(--text4);font-size:13px;font-style:italic">还没有数据</div>';return;}
+  const avg=(foods.reduce((s,f)=>s+f.score,0)/foods.length).toFixed(1);
+  const cats={};foods.forEach(f=>{if(f.category)cats[f.category]=(cats[f.category]||0)+1;});
+  const topCat=Object.entries(cats).sort((a,b)=>b[1]-a[1])[0];
+  const top=[...foods].sort((a,b)=>b.score-a.score)[0];
+  sa.innerHTML=[['共收藏',`${foods.length} 家`],['平均评分',`${avg} 分`],['最高分',top?`${top.name}(${top.score}分)`:'-'],['最多分类',topCat?`${topCat[0]}(${topCat[1]}家)`:'-'],['成员数',`${Object.keys(members).length} 人`]].map(([l,v])=>`<div class="stat-row"><span class="stat-label">${l}</span><span class="stat-val">${v}</span></div>`).join('');
+}
+
+// ═══════════ TOAST ═══════════
+function showToast(msg){ const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2400); }
+</script>
+</body>
+</html>
